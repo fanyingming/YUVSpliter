@@ -8,6 +8,18 @@ void yv12_to_i420( unsigned char *yv12,unsigned char *i420, int width, int heigh
 	memcpy( i420+width*height+width*height/4, yv12+width*height, width*height/4 );
 }
 
+void yuva_to_yuvyuv( unsigned char *input,unsigned char *output, int width, int height )
+{
+	//yuv
+	memcpy( output, input, (width*height*3)/2 );
+	input += (width*height*3)/2;
+	output+= (width*height*3)/2;
+	//Alpha
+	memcpy( output, input, width*height );
+	output+= width*height;
+	//uv 
+	memset( output, 0, (width*height)/2);
+}
 void resolution_split( unsigned char *input,unsigned char *output, int width_new, int height_new, int width, int height )
 {
 	int i;
@@ -56,9 +68,9 @@ int main( int argc, char **argv )
 {
 	char input_filename[200]/* = argv[1]*/;
 	int frame_num/* = atoi(argv[2])*/;
-	int seek;
-	int width/* = atoi(argv[3])*/;
-	int height/* = atoi(argv[4])*/;
+	long seek;
+	long width/* = atoi(argv[3])*/;
+	long height/* = atoi(argv[4])*/;
 	int width_new;
 	int height_new;
 	char output_filename[200]/* = argv[5]*/;
@@ -70,9 +82,9 @@ int main( int argc, char **argv )
  
 	int i;
 
-	printf("YUV split and converse tool.\n");
+	printf("YUV split and converse tool. By Yingming. 2014 09 01 \n");
 	printf("Useage: input output frames seek width height option(int).\n");
-	printf("option: 1.I420 to I420; 2.YV12 to I420; 3.NV12 to I420; 4.resolution split.\n");
+	printf("option:\n1.I420 to I420;\n2.YV12 to I420;\n3.NV12 to I420;\n4.resolution split;\n5.YUVA to 2 frame yuv.\n");
 	printf("Please input.\n");
 	scanf("%s %s %d %d %d %d %d",input_filename,output_filename,&frame_num,&seek,&width,&height,&option);
 	if( option==4 )
@@ -87,13 +99,25 @@ int main( int argc, char **argv )
 	}
 	fin = fopen( input_filename, "rb");
 	fout= fopen( output_filename, "wb");
-	input_yuv = (unsigned char *)malloc((width * height * 3) / 2);
-	output_yuv = (unsigned char *)malloc((width * height * 3) / 2);
+	
 
-	fseek(fin,seek*(width * height * 3) / 2,SEEK_SET);
+	if( option==5 )
+	{
+		input_yuv = (unsigned char *)malloc((width * height * 5) / 2);
+		output_yuv = (unsigned char *)malloc((width * height * 3));
+	}
+	else
+	{
+		input_yuv = (unsigned char *)malloc((width * height * 3) / 2);
+		output_yuv = (unsigned char *)malloc((width * height * 3) / 2);
+	}
+	if( seek )
+		fseek(fin,seek*(width * height * 3) / 2,SEEK_SET);
 	for( i=1; i<=frame_num; i++ ) {
-
-		fread( input_yuv, 1, (width * height * 3) / 2, fin );
+		if( option==5 )
+			fread( input_yuv, 1, (width * height * 5) / 2, fin );
+		else
+			fread( input_yuv, 1, (width * height * 3) / 2, fin );
 
 		switch(option)
 		{
@@ -118,6 +142,12 @@ int main( int argc, char **argv )
 			{
 				resolution_split( input_yuv, output_yuv, width_new, height_new, width, height );
 				fwrite( output_yuv, 1, (width_new * height_new * 3) / 2, fout );
+				break;
+			}
+		case 5:
+			{
+				yuva_to_yuvyuv( input_yuv, output_yuv,  width, height );
+				fwrite( output_yuv, 1, (width * height * 3) , fout );
 				break;
 			}
 		}
